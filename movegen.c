@@ -287,6 +287,40 @@ void generate_legal_moves(const Position *p, MoveList *list) {
 }
 
 /* ================================================================
+ * Legal capture generation -- only captures, for quiescence search
+ * ================================================================ */
+
+void generate_legal_captures(const Position *p, MoveList *list) {
+	MoveList pseudo;
+	generate_pseudo_legal(p, &pseudo);
+
+	list->count = 0;
+
+	for (int i = 0; i < pseudo.count; i++) {
+		/* Only keep captures (including EP and promo-captures) */
+		if (!MOVE_IS_CAPTURE(pseudo.moves[i].flags))
+			continue;
+
+		Position test;
+		copy_position(&test, p);
+		make_move(&test, &pseudo.moves[i]);
+
+		Color side = p->white_turn ? WHITE : BLACK;
+		Color enemy = p->white_turn ? BLACK : WHITE;
+		Bitboard king = (side == WHITE) ? test.wk : test.bk;
+
+		if (king == 0) continue;
+
+		int king_sq = __builtin_ctzll(king);
+
+		if (!is_square_attacked(&test, king_sq, enemy)) {
+			list->moves[list->count] = pseudo.moves[i];
+			list->count++;
+		}
+	}
+}
+
+/* ================================================================
  * Public query functions
  * ================================================================ */
 

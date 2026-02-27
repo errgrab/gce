@@ -3,6 +3,74 @@
 #include <stdio.h>
 #include <string.h>
 
+/* ================================================================
+ * Zobrist hashing
+ *
+ * Random 64-bit keys for each (piece, square) combination, plus
+ * side-to-move, castling rights, and en passant file.
+ * ================================================================ */
+
+/* piece_keys[color][piece_type][square] -- color 0=W, 1=B; piece 0-5 = P,N,B,R,Q,K */
+static uint64_t piece_keys[2][6][64];
+static uint64_t side_key;                /* XOR when Black to move */
+static uint64_t castling_keys[16];       /* one key per castling bitmask */
+static uint64_t ep_keys[8];             /* one key per en passant file */
+
+/* Simple xorshift64 PRNG for deterministic key generation */
+static uint64_t xorshift64(uint64_t *state) {
+	uint64_t x = *state;
+	x ^= x << 13;
+	x ^= x >> 7;
+	x ^= x << 17;
+	*state = x;
+	return x;
+}
+
+void init_zobrist(void) {
+	uint64_t state = 0x4D595A6F62726973ULL; /* seed: "MYZobris" */
+
+	for (int c = 0; c < 2; c++)
+		for (int p = 0; p < 6; p++)
+			for (int s = 0; s < 64; s++)
+				piece_keys[c][p][s] = xorshift64(&state);
+
+	side_key = xorshift64(&state);
+
+	for (int i = 0; i < 16; i++)
+		castling_keys[i] = xorshift64(&state);
+
+	for (int i = 0; i < 8; i++)
+		ep_keys[i] = xorshift64(&state);
+}
+
+/* Compute hash from scratch (for init or verification) */
+uint64_t compute_hash(const Position *p) {
+	uint64_t h = 0;
+
+	/* Map each bitboard to (color, piece_index) */
+	const Bitboard *bbs[12] = {
+		&p->wp, &p->wn, &p->wb, &p->wr, &p->wq, &p->wk,
+		&p->bp, &p->bn, &p->bb, &p->br, &p->bq, &p->bk
+	};
+
+	for (int i = 0; i < 12; i++) {
+		int color = i / 6;       /* 0 = white, 1 = black */
+		int piece = i % 6;       /* 0=P, 1=N, 2=B, 3=R, 4=Q, 5=K */
+		Bitboard bb = *bbs[i];
+		while (bb) {
+			int sq = __builtin_ctzll(bb);
+			h ^= piece_keys[color][piece][sq];
+			bb &= bb - 1;
+		}
+	}
+
+	if (!p->white_turn) h ^= side_key;
+	h ^= castling_keys[p->castling & 0x0F];
+	if (p->en_passant >= 0) h ^= ep_keys[p->en_passant & 7];
+
+	return h;
+}
+
 void init_position(Position *p) {
 	memset(p, 0, sizeof(Position));
 
@@ -27,6 +95,7 @@ void init_position(Position *p) {
 	p->en_passant = -1;
 	p->halfmove   = 0;
 	p->fullmove   = 1;
+	p->hash       = compute_hash(p);
 }
 
 Bitboard white_pieces(const Position *p) {

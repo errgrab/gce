@@ -112,6 +112,9 @@ void make_move(Position *p, const Move *m) {
 
 	/* Toggle turn */
 	p->white_turn = !p->white_turn;
+
+	/* Update Zobrist hash */
+	p->hash = compute_hash(p);
 }
 
 /* ================================================================

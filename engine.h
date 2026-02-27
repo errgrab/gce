@@ -5,16 +5,28 @@
 #include "movegen.h"
 
 /*
- * Simple evaluation engine.
+ * Chess engine with alpha-beta search and pruning optimizations.
  *
- * Evaluates positions and ranks moves. Score is in centipawns
- * from the perspective of the side to move (positive = good for
- * the side to move).
- *
- * This is intentionally a "dumb" engine -- material + piece-square
- * tables + basic mobility. No search tree, no alpha-beta. Just
- * one-ply evaluation to rank moves.
+ * Features:
+ *   - Negamax with alpha-beta pruning
+ *   - Transposition table (Zobrist hashing)
+ *   - Iterative deepening with best-move ordering
+ *   - Quiescence search (captures only at horizon)
+ *   - Null move pruning
+ *   - Killer move heuristic
+ *   - Late move reductions (LMR)
+ *   - Check extensions
  */
+
+/* Default search depth (half-moves) */
+#define DEFAULT_DEPTH 6
+
+/* Score constants */
+#define SCORE_INF    1000000
+#define SCORE_MATE   999000
+
+/* Maximum search depth for internal arrays (killers, etc.) */
+#define MAX_PLY 128
 
 /* A scored move: a legal move plus its evaluation */
 typedef struct {
@@ -29,17 +41,28 @@ typedef struct {
 } RankedMoveList;
 
 /*
- * Evaluate the current position.
+ * Initialize the engine (clear TT, killers, etc.).
+ * Call once at startup or when starting a new game.
+ */
+void engine_init(void);
+
+/*
+ * Evaluate the current position (static evaluation).
  * Returns score in centipawns from White's perspective.
- * Positive = White is better, negative = Black is better.
  */
 int evaluate(const Position *p);
 
 /*
+ * Search for the best move using iterative deepening + alpha-beta.
+ * Returns the evaluation score from the side-to-move's perspective.
+ * If best_move is non-NULL, the best move found is stored there.
+ */
+int engine_search(const Position *p, int max_depth, Move *best_move);
+
+/*
  * Rank all legal moves for the side to move.
- * Each move is evaluated by applying it to a copy and evaluating
- * the resulting position. Moves are sorted best-first (highest
- * score for the moving side first).
+ * Uses iterative deepening search at DEFAULT_DEPTH.
+ * Moves are sorted best-first.
  */
 void rank_moves(const Position *p, RankedMoveList *ranked);
 

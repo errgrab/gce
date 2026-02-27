@@ -35,7 +35,12 @@ typedef struct {
 	int en_passant;        /* target square index (0-63) or -1 if none */
 	int halfmove;          /* halfmove clock for 50-move rule */
 	int fullmove;          /* fullmove counter (starts at 1) */
+	uint64_t hash;         /* Zobrist hash of the position */
 } Position;
+
+/* ---- Zobrist hashing ---- */
+void init_zobrist(void);
+uint64_t compute_hash(const Position *p);
 
 /* ---- Initialization ---- */
 void init_position(Position *p);

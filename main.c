@@ -13,6 +13,7 @@ static void print_help(void) {
 	printf("  moves    List all legal moves (in SAN)\n");
 	printf("  eval     Evaluate the current position\n");
 	printf("  suggest  Show ranked list of best moves\n");
+	printf("  go       Engine plays the best move for current side\n");
 	printf("  check    Show if current side is in check\n");
 	printf("  board    Redraw the board\n");
 	printf("  reset    Reset to starting position\n");
@@ -36,8 +37,10 @@ static void print_legal_moves(const Position *p) {
 }
 
 int main(void) {
-	/* Initialize attack lookup tables (must be called once) */
+	/* Initialize lookup tables (must be called once) */
 	init_attacks();
+	init_zobrist();
+	engine_init();
 
 	Position pos;
 	init_position(&pos);
@@ -124,7 +127,8 @@ int main(void) {
 			RankedMoveList ranked;
 			rank_moves(&pos, &ranked);
 
-			printf("Move ranking (%d moves):\n", ranked.count);
+			printf("Move ranking (%d moves, depth %d):\n",
+				ranked.count, DEFAULT_DEPTH);
 			printf("  %-4s  %-10s  %s\n", "#", "Move", "Score");
 			printf("  %-4s  %-10s  %s\n", "---", "----------", "------");
 			for (int i = 0; i < ranked.count; i++) {
@@ -134,6 +138,35 @@ int main(void) {
 					i + 1, san, ranked.moves[i].score / 100.0);
 			}
 			printf("\n");
+			continue;
+		}
+
+		if (strcmp(input, "go") == 0) {
+			if (state != GAME_ONGOING) {
+				printf("Game is over. Type 'reset' to play again.\n");
+				continue;
+			}
+
+			Move best;
+			int score = engine_search(&pos, DEFAULT_DEPTH, &best);
+
+			/* Save position for SAN display */
+			Position before;
+			copy_position(&before, &pos);
+
+			/* Apply the best move */
+			make_move(&pos, &best);
+
+			char san_buf[12];
+			move_to_san(&best, &before, san_buf);
+			printf("Engine plays: %d.%s%s (eval: %+.2f)\n",
+				before.fullmove,
+				before.white_turn ? " " : ".. ",
+				san_buf,
+				score / 100.0);
+
+			printf("\n");
+			print_board(&pos);
 			continue;
 		}
 

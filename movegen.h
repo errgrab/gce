@@ -62,6 +62,9 @@ void generate_pseudo_legal(const Position *p, MoveList *list);
 /* Generate all legal moves (filters out moves that leave king in check) */
 void generate_legal_moves(const Position *p, MoveList *list);
 
+/* Generate only legal capture moves (for quiescence search) */
+void generate_legal_captures(const Position *p, MoveList *list);
+
 /* ---- Query functions ---- */
 
 /* Check if a given from/to move is in the legal move list.
