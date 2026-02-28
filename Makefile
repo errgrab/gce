@@ -1,19 +1,11 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -g
-TARGET = gce
-SRCS = main.c board.c attack.c movegen.c move.c engine.c
-OBJS = $(SRCS:.c=.o)
-HDRS = board.h attack.h movegen.h move.h engine.h
+CFLAGS = -Wall -Wextra -std=c99 -O2 -g
+OBJ = main.o board.o attack.o movegen.o move.o engine.o uci.o
 
-all: $(TARGET)
-
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
-
-%.o: %.c $(HDRS)
+gce: $(OBJ)
+	$(CC) -o $@ $(OBJ)
+.c.o:
 	$(CC) $(CFLAGS) -c $<
-
 clean:
-	rm -f $(OBJS) $(TARGET)
-
-.PHONY: all clean
+	rm -f gce $(OBJ)
+.PHONY: clean

@@ -1,2 +1,7 @@
 *.o
+*.d
 gce
+web/venv/
+web/__pycache__/
+.vscode/
+.opencode/
